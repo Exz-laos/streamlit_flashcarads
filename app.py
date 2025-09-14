@@ -127,7 +127,7 @@ st.title("🗂️ Интерактивные Аудио-Карточки по И
 
 # --- NEW FEATURE: Thai quote + cat every 2 minutes ---
 current_time = time.time()
-if current_time - st.session_state.last_popup_time >= 3:  # 120 sec = 2 minutes
+if current_time - st.session_state.last_popup_time >= 40:  # 120 sec = 2 minutes
     quote = random.choice(thai_quotes)
 
     # ✅ Popup stays 5 sec
