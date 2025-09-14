@@ -127,40 +127,44 @@ st.title("🗂️ Интерактивные Аудио-Карточки по И
 
 # --- NEW FEATURE: Thai quote + cat every 2 minutes ---
 current_time = time.time()
-if current_time - st.session_state.last_popup_time >= 60:  # 120 sec = 2 minutes
+if current_time - st.session_state.last_popup_time >= 3:  # 120 sec = 2 minutes
     quote = random.choice(thai_quotes)
-    st.toast(f"🐱💡 : {quote}", icon="😺")
 
-    # ✅ Working transparent cat gifs (tested)
+    # ✅ Popup stays 5 sec
+    st.toast(f"🐱💡 : {quote}", icon="😺", duration=5)
+
+    # ✅ Transparent cute cat gifs
     cat_gifs = [
         "https://media.tenor.com/nsGNQy4ZMjEAAAAi/gato-guitarra.gif", # guitar cat
+        "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXN0d25hcW52dzdpZmN0eWFzMmxsNjhvaW5jcXU2Y3A2dG5nOXZmdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/fA7OjY4F5YwDBwFqkh/giphy.gif",
         "https://media.tenor.com/5aAZH40lwxgAAAAm/slowmo-cat-twerk.webp",
+        "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExY3pzeXB0ZnY5eDBoejBiMDBoNWQzdms3eGoyb2kxY3EwenlvZHI3ayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/eLv7gJpxqiQtbNNQUe/giphy.gif",
         "https://media1.tenor.com/m/XBwe7zO46NQAAAAd/jive-cat-mega64-cat.gif",
+        "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExNXE2ZzBheDI5aTIyNDRqYmdvOThmZHV4aWJ1NDNldXN0eno4NzF1YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/W0VuY0dTxH9L6vLUJ2/giphy.gif",
         "https://media.tenor.com/9zmtHZ0tIjkAAAAi/nyancat-rainbow-cat.gif",
+        "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2dxaG05emJoa3k1bmswbjBoZnpkdzZzYWU5ZjRhcnljbXhpdHlrMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/i4ldQWj8VNnbeGDqop/giphy.gif",
         "https://media.tenor.com/YEwxWExn80kAAAAi/cat-cute.gif",
         "https://media1.tenor.com/m/w4GOERle_1IAAAAC/cat.gif",
+        "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExNTl6MWQ0aGJnczYxMXd5MnJiYnM1MWMwZTYzamZqMnYweTl3MzFsNyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/5ztVM85oObF12bA27A/200w.webp",
         "https://media.tenor.com/_nR-1FLTOAwAAAAi/pixel-cat.gif",
         "https://media.tenor.com/29Jgk2DXsm0AAAAi/mad-cat.gif",
         "https://media.tenor.com/IYdap55unFgAAAAi/nod-cat-nod.gif",
         
-        "https://media.giphy.com/media/v6aOjy0Qo1fIA/giphy.gif",   # walking cat
-        "https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif",   # happy cat
-        "https://media.giphy.com/media/l1J9EdzfOSgfyueLm/giphy.gif", # slow walk
-        "https://media.giphy.com/media/11s7Ke7jcNxCHS/giphy.gif"   # fast cat run
+        
     ]
     cat_choice = random.choice(cat_gifs)
 
-    # Show random cat gif with slower run
+    # ✅ Show smaller cat with slower movement
     st.markdown(
         f"""
-        <div style="position:relative; height:160px; overflow:hidden;">
+        <div style="position:relative; height:120px; overflow:hidden;">
             <img src="{cat_choice}"
-                 style="position:absolute; left:0; bottom:0; height:160px; 
+                 style="position:absolute; left:0; bottom:0; height:60px; 
                         animation: run 20s linear infinite;">
         </div>
         <style>
         @keyframes run {{
-            0% {{ left: -220px; }}
+            0% {{ left: -150px; }}
             100% {{ left: 100%; }}
         }}
         </style>
