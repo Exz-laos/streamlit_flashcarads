@@ -1,21 +1,27 @@
 import streamlit as st
 from gtts import gTTS
 import io
-from data import flashcard_data, thai_translations # Import data from the external file
+import base64
+import random  # Import the random library
+from data import flashcard_data, thai_translations
 
 # --- Functions ---
 
 @st.cache_data
 def generate_audio(text):
-    """Generates audio from text and returns it as a byte object."""
+    """
+    Generates audio and returns it as a Base64 encoded Data URI,
+    which is highly compatible with mobile browsers.
+    """
     audio_bytes = io.BytesIO()
     try:
         tts = gTTS(text=text, lang='ru', slow=False)
         tts.write_to_fp(audio_bytes)
         audio_bytes.seek(0)
-        return audio_bytes
+        b64 = base64.b64encode(audio_bytes.read()).decode('utf-8')
+        audio_uri = f"data:audio/mp3;base64,{b64}"
+        return audio_uri
     except Exception as e:
-        # Log the exception for debugging if running locally
         print(f"Error generating audio: {e}")
         return None
 
@@ -36,22 +42,30 @@ def initialize_session_state():
     if 'card_status' not in st.session_state:
         st.session_state.card_status = {key: "Не просмотрено" for key in st.session_state.card_keys}
     
-    # NEW: State to hold the audio player data
     if 'audio_to_play' not in st.session_state:
         st.session_state.audio_to_play = None
+    
+    # NEW: State for the shuffle toggle
+    if 'shuffle_on' not in st.session_state:
+        st.session_state.shuffle_on = False
 
 def apply_range(start_num, end_num):
-    """Filters cards based on the selected range."""
+    """Filters cards based on the selected range and shuffles if requested."""
     start_idx = start_num - 1
     end_idx = end_num
     
     all_keys = list(flashcard_data.keys())
     if 0 <= start_idx < end_idx <= len(all_keys):
         st.session_state.card_keys = all_keys[start_idx:end_idx]
+        
+        # NEW: Shuffle the list of keys if the toggle is on
+        if st.session_state.shuffle_on:
+            random.shuffle(st.session_state.card_keys)
+
         st.session_state.total_cards = len(st.session_state.card_keys)
         st.session_state.current_index = 0
         st.session_state.is_flipped = False
-        st.session_state.audio_to_play = None # Reset audio on range change
+        st.session_state.audio_to_play = None
     else:
         st.sidebar.error("Неверный диапазон. Пожалуйста, выберите корректные номера.")
 
@@ -60,14 +74,14 @@ def next_card():
     if st.session_state.current_index < st.session_state.total_cards - 1:
         st.session_state.current_index += 1
         st.session_state.is_flipped = False
-        st.session_state.audio_to_play = None # Reset audio player
+        st.session_state.audio_to_play = None
 
 def prev_card():
     """Moves to the previous card and resets state."""
     if st.session_state.current_index > 0:
         st.session_state.current_index -= 1
         st.session_state.is_flipped = False
-        st.session_state.audio_to_play = None # Reset audio player
+        st.session_state.audio_to_play = None
 
 def mark_status(status):
     """Marks the current card with a status."""
@@ -88,6 +102,9 @@ with st.sidebar:
     start_num = st.number_input("Начало", min_value=1, max_value=total_cards_overall, value=1, step=1)
     end_num = st.number_input("Конец", min_value=1, max_value=total_cards_overall, value=10, step=1)
     
+    # NEW: Shuffle toggle switch
+    st.toggle("Перемешать карточки", key="shuffle_on", help="Активируйте, чтобы перемешать карточки в выбранном диапазоне.")
+
     if st.button("Применить диапазон", use_container_width=True):
         apply_range(start_num, end_num)
         st.rerun()
@@ -131,27 +148,25 @@ else:
             with col1:
                 if st.button("Перевернуть на ответ ↩️", use_container_width=True):
                     st.session_state.is_flipped = True
-                    st.session_state.audio_to_play = None # Reset audio
+                    st.session_state.audio_to_play = None
                     st.rerun()
             with col2:
                 if st.button("▶️", use_container_width=True, help="Озвучить вопрос"):
                     with st.spinner("Генерация аудио..."):
-                        audio_file = generate_audio(current_key)
-                        if audio_file:
-                            st.session_state.audio_to_play = audio_file
+                        audio_uri = generate_audio(current_key)
+                        if audio_uri:
+                            st.session_state.audio_to_play = audio_uri
                         else:
                             st.session_state.audio_to_play = None
                             st.toast("Ошибка генерации аудио!", icon="🚨")
             with col3:
-                # Thai translation logic remains the same
                 if st.button("🇹🇭", use_container_width=True, help="Помощь (Thai)"):
                     if "question" in thai_translation:
                         with st.expander("Перевод на тайский", expanded=True):
                            st.info(thai_translation["question"])
             
-            # NEW: Display the audio player if it exists in the state
             if st.session_state.audio_to_play:
-                st.audio(st.session_state.audio_to_play, format='audio/mp3')
+                st.audio(st.session_state.audio_to_play)
 
     else:
         # --- BACK OF THE CARD ---
@@ -165,27 +180,25 @@ else:
             with col1:
                 if st.button("Перевернуть на вопрос ↪️", use_container_width=True):
                     st.session_state.is_flipped = False
-                    st.session_state.audio_to_play = None # Reset audio
+                    st.session_state.audio_to_play = None
                     st.rerun()
             with col2:
                 if st.button("▶️", use_container_width=True, help="Озвучить ответ"):
                     with st.spinner("Генерация аудио..."):
-                        audio_file = generate_audio(current_answer)
-                        if audio_file:
-                            st.session_state.audio_to_play = audio_file
+                        audio_uri = generate_audio(current_answer)
+                        if audio_uri:
+                            st.session_state.audio_to_play = audio_uri
                         else:
                             st.session_state.audio_to_play = None
                             st.toast("Ошибка генерации аудио!", icon="🚨")
             with col3:
-                # Thai translation logic remains the same
                 if st.button("🇹🇭", use_container_width=True, help="Помощь (Thai)"):
                      if "answer" in thai_translation:
                         with st.expander("Перевод на тайский", expanded=True):
                            st.info(thai_translation["answer"])
 
-            # NEW: Display the audio player if it exists in the state
             if st.session_state.audio_to_play:
-                st.audio(st.session_state.audio_to_play, format='audio/mp3')
+                st.audio(st.session_state.audio_to_play)
 
     st.divider()
 
