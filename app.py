@@ -1,26 +1,24 @@
 import streamlit as st
 from gtts import gTTS
 import io
-# Импортируем данные из нашего нового файла data.py
-from data import flashcard_data, thai_translations
+from data import flashcard_data, thai_translations # Import data from the external file
 
 # --- Functions ---
 
 @st.cache_data
-def generate_audio(text, lang='ru'):
-    """Генерирует аудио из текста на указанном языке."""
+def generate_audio(text):
+    """Generates audio from text and returns it as a byte object."""
     audio_bytes = io.BytesIO()
     try:
-        tts = gTTS(text=text, lang=lang, slow=False)
+        tts = gTTS(text=text, lang='ru', slow=False)
         tts.write_to_fp(audio_bytes)
         audio_bytes.seek(0)
         return audio_bytes
-    except Exception as e:
-        st.error(f"Ошибка генерации аудио: {e}")
+    except Exception:
         return None
 
 def initialize_session_state():
-    """Инициализирует переменные состояния сессии."""
+    """Initializes session state variables if they don't exist."""
     if 'card_keys' not in st.session_state:
         st.session_state.card_keys = list(flashcard_data.keys())
     
@@ -34,11 +32,13 @@ def initialize_session_state():
         st.session_state.is_flipped = False
 
     if 'card_status' not in st.session_state:
-        st.session_state.card_status = {key: "Не просмотрено" for key in list(flashcard_data.keys())}
+        st.session_state.card_status = {key: "Не просмотрено" for key in st.session_state.card_keys}
 
 def apply_range(start_num, end_num):
-    """Фильтрует карточки по заданному диапазону."""
-    start_idx, end_idx = start_num - 1, end_num
+    """Filters cards based on the selected range."""
+    start_idx = start_num - 1
+    end_idx = end_num
+    
     all_keys = list(flashcard_data.keys())
     if 0 <= start_idx < end_idx <= len(all_keys):
         st.session_state.card_keys = all_keys[start_idx:end_idx]
@@ -46,19 +46,22 @@ def apply_range(start_num, end_num):
         st.session_state.current_index = 0
         st.session_state.is_flipped = False
     else:
-        st.sidebar.error("Неверный диапазон.")
+        st.sidebar.error("Неверный диапазон. Пожалуйста, выберите корректные номера.")
 
 def next_card():
+    """Moves to the next card."""
     if st.session_state.current_index < st.session_state.total_cards - 1:
         st.session_state.current_index += 1
         st.session_state.is_flipped = False
 
 def prev_card():
+    """Moves to the previous card."""
     if st.session_state.current_index > 0:
         st.session_state.current_index -= 1
         st.session_state.is_flipped = False
 
 def mark_status(status):
+    """Marks the current card with a status."""
     current_key = st.session_state.card_keys[st.session_state.current_index]
     st.session_state.card_status[current_key] = status
 
@@ -70,9 +73,11 @@ initialize_session_state()
 # --- Sidebar Controls ---
 with st.sidebar:
     st.header("⚙️ Настройки")
+    
+    st.subheader("Диапазон карточек")
     total_cards_overall = len(flashcard_data)
     start_num = st.number_input("Начало", min_value=1, max_value=total_cards_overall, value=1, step=1)
-    end_num = st.number_input("Конец", min_value=1, max_value=total_cards_overall, value=65, step=1)
+    end_num = st.number_input("Конец", min_value=1, max_value=total_cards_overall, value=10, step=1)
     
     if st.button("Применить диапазон", use_container_width=True):
         apply_range(start_num, end_num)
@@ -98,7 +103,7 @@ else:
     current_key = st.session_state.card_keys[st.session_state.current_index]
     current_answer = flashcard_data[current_key]
     current_status = st.session_state.card_status[current_key]
-    thai_translation = thai_translations.get(current_key, {}) # Получаем перевод
+    thai_translation = thai_translations.get(current_key, {})
 
     progress_value = (st.session_state.current_index + 1) / st.session_state.total_cards
     st.progress(progress_value, text=f"Карточка {st.session_state.current_index + 1} из {st.session_state.total_cards}")
@@ -113,19 +118,22 @@ else:
                 st.subheader("Вопрос:")
                 st.write(current_key)
             
-            # --- Кнопки для лицевой стороны ---
-            col1, col2, col3 = st.columns([2, 1, 1])
+            col1, col2, col3 = st.columns([3, 1, 1])
             with col1:
                 if st.button("Перевернуть на ответ ↩️", use_container_width=True):
                     st.session_state.is_flipped = True
                     st.rerun()
             with col2:
-                if st.button("▶️ Озвучить", use_container_width=True):
-                    st.audio(generate_audio(current_key, 'ru'), format='audio/mp3', autoplay=True)
+                if st.button("▶️", use_container_width=True, help="Озвучить вопрос"):
+                    audio_file = generate_audio(current_key)
+                    if audio_file:
+                        # REMOVED autoplay=True
+                        st.audio(audio_file, format='audio/mp3') 
             with col3:
-                # Кнопка помощи теперь в виде expander
-                with st.expander("🇹🇭 Помощь (Thai)"):
-                    st.info(thai_translation.get("question", "Перевод не найден."))
+                if st.button("🇹🇭", use_container_width=True, help="Помощь (Thai)"):
+                    if "question" in thai_translation:
+                        with st.expander("Перевод на тайский", expanded=True):
+                           st.info(thai_translation["question"])
 
     else:
         # --- BACK OF THE CARD ---
@@ -135,27 +143,35 @@ else:
                 st.subheader("Ответ:")
                 st.write(current_answer)
                 
-            # --- Кнопки для обратной стороны ---
-            col1, col2, col3 = st.columns([2, 1, 1])
+            col1, col2, col3 = st.columns([3, 1, 1])
             with col1:
                 if st.button("Перевернуть на вопрос ↪️", use_container_width=True):
                     st.session_state.is_flipped = False
                     st.rerun()
             with col2:
-                if st.button("▶️ Озвучить", use_container_width=True):
-                    st.audio(generate_audio(current_answer, 'ru'), format='audio/mp3', autoplay=True)
+                if st.button("▶️", use_container_width=True, help="Озвучить ответ"):
+                    audio_file = generate_audio(current_answer)
+                    if audio_file:
+                        # REMOVED autoplay=True
+                        st.audio(audio_file, format='audio/mp3')
             with col3:
-                with st.expander("🇹🇭 Помощь (Thai)"):
-                    st.info(thai_translation.get("answer", "Перевод не найден."))
-    
+                if st.button("🇹🇭", use_container_width=True, help="Помощь (Thai)"):
+                     if "answer" in thai_translation:
+                        with st.expander("Перевод на тайский", expanded=True):
+                           st.info(thai_translation["answer"])
+
     st.divider()
 
     # --- Navigation and Status Buttons ---
     nav_col1, nav_col2 = st.columns(2)
-    nav_col1.button("⬅️ Предыдущая", on_click=prev_card, use_container_width=True, disabled=(st.session_state.current_index == 0))
-    nav_col2.button("Следующая ➡️", on_click=next_card, use_container_width=True, disabled=(st.session_state.current_index >= st.session_state.total_cards - 1))
+    with nav_col1:
+        st.button("⬅️ Предыдущая", on_click=prev_card, use_container_width=True, disabled=(st.session_state.current_index == 0))
+    with nav_col2:
+        st.button("Следующая ➡️", on_click=next_card, use_container_width=True, disabled=(st.session_state.current_index == st.session_state.total_cards - 1))
         
     status_col1, status_col2 = st.columns(2)
-    status_col1.button("✅ Я это знаю!", on_click=mark_status, args=("Запомнено",), use_container_width=True)
-    status_col2.button("🔄 Нужно повторить", on_click=mark_status, args=("Нужно повторить",), use_container_width=True)
+    with status_col1:
+        st.button("✅ Я это знаю!", on_click=mark_status, args=("Запомнено",), use_container_width=True)
+    with status_col2:
+        st.button("🔄 Нужно повторить", on_click=mark_status, args=("Нужно повторить",), use_container_width=True)
 
