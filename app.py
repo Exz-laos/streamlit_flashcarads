@@ -14,7 +14,9 @@ def generate_audio(text):
         tts.write_to_fp(audio_bytes)
         audio_bytes.seek(0)
         return audio_bytes
-    except Exception:
+    except Exception as e:
+        # Log the exception for debugging if running locally
+        print(f"Error generating audio: {e}")
         return None
 
 def initialize_session_state():
@@ -33,6 +35,10 @@ def initialize_session_state():
 
     if 'card_status' not in st.session_state:
         st.session_state.card_status = {key: "Не просмотрено" for key in st.session_state.card_keys}
+    
+    # NEW: State to hold the audio player data
+    if 'audio_to_play' not in st.session_state:
+        st.session_state.audio_to_play = None
 
 def apply_range(start_num, end_num):
     """Filters cards based on the selected range."""
@@ -45,20 +51,23 @@ def apply_range(start_num, end_num):
         st.session_state.total_cards = len(st.session_state.card_keys)
         st.session_state.current_index = 0
         st.session_state.is_flipped = False
+        st.session_state.audio_to_play = None # Reset audio on range change
     else:
         st.sidebar.error("Неверный диапазон. Пожалуйста, выберите корректные номера.")
 
 def next_card():
-    """Moves to the next card."""
+    """Moves to the next card and resets state."""
     if st.session_state.current_index < st.session_state.total_cards - 1:
         st.session_state.current_index += 1
         st.session_state.is_flipped = False
+        st.session_state.audio_to_play = None # Reset audio player
 
 def prev_card():
-    """Moves to the previous card."""
+    """Moves to the previous card and resets state."""
     if st.session_state.current_index > 0:
         st.session_state.current_index -= 1
         st.session_state.is_flipped = False
+        st.session_state.audio_to_play = None # Reset audio player
 
 def mark_status(status):
     """Marks the current card with a status."""
@@ -122,18 +131,27 @@ else:
             with col1:
                 if st.button("Перевернуть на ответ ↩️", use_container_width=True):
                     st.session_state.is_flipped = True
+                    st.session_state.audio_to_play = None # Reset audio
                     st.rerun()
             with col2:
                 if st.button("▶️", use_container_width=True, help="Озвучить вопрос"):
-                    audio_file = generate_audio(current_key)
-                    if audio_file:
-                        # REMOVED autoplay=True
-                        st.audio(audio_file, format='audio/mp3') 
+                    with st.spinner("Генерация аудио..."):
+                        audio_file = generate_audio(current_key)
+                        if audio_file:
+                            st.session_state.audio_to_play = audio_file
+                        else:
+                            st.session_state.audio_to_play = None
+                            st.toast("Ошибка генерации аудио!", icon="🚨")
             with col3:
+                # Thai translation logic remains the same
                 if st.button("🇹🇭", use_container_width=True, help="Помощь (Thai)"):
                     if "question" in thai_translation:
                         with st.expander("Перевод на тайский", expanded=True):
                            st.info(thai_translation["question"])
+            
+            # NEW: Display the audio player if it exists in the state
+            if st.session_state.audio_to_play:
+                st.audio(st.session_state.audio_to_play, format='audio/mp3')
 
     else:
         # --- BACK OF THE CARD ---
@@ -147,18 +165,27 @@ else:
             with col1:
                 if st.button("Перевернуть на вопрос ↪️", use_container_width=True):
                     st.session_state.is_flipped = False
+                    st.session_state.audio_to_play = None # Reset audio
                     st.rerun()
             with col2:
                 if st.button("▶️", use_container_width=True, help="Озвучить ответ"):
-                    audio_file = generate_audio(current_answer)
-                    if audio_file:
-                        # REMOVED autoplay=True
-                        st.audio(audio_file, format='audio/mp3')
+                    with st.spinner("Генерация аудио..."):
+                        audio_file = generate_audio(current_answer)
+                        if audio_file:
+                            st.session_state.audio_to_play = audio_file
+                        else:
+                            st.session_state.audio_to_play = None
+                            st.toast("Ошибка генерации аудио!", icon="🚨")
             with col3:
+                # Thai translation logic remains the same
                 if st.button("🇹🇭", use_container_width=True, help="Помощь (Thai)"):
                      if "answer" in thai_translation:
                         with st.expander("Перевод на тайский", expanded=True):
                            st.info(thai_translation["answer"])
+
+            # NEW: Display the audio player if it exists in the state
+            if st.session_state.audio_to_play:
+                st.audio(st.session_state.audio_to_play, format='audio/mp3')
 
     st.divider()
 
