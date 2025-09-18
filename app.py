@@ -184,10 +184,12 @@ st.title("🗂️ Интерактивные Аудио-Карточки по И
 
 # --- Cat + Quote Feature ---
 current_time = time.time()
-if current_time - st.session_state.last_popup_time >= 60:
+# UPDATED: Check if 60 seconds have passed
+if current_time - st.session_state.last_popup_time >= 60 :
     quote = random.choice(thai_quotes)
+    # UPDATED: Set popup duration to 10 seconds
     st.toast(f"🐱💡 : {quote}", icon="😺", duration=10)
-    cat_gifs = [ 
+    cat_gifs = [
         "https://media.tenor.com/nsGNQy4ZMjEAAAAi/gato-guitarra.gif",
         "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXN0d25hcW52dzdpZmN0eWFzMmxsNjhvaW5jcXU2Y3A2dG5nOXZmdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/fA7OjY4F5YwDBwFqkh/giphy.gif",
         "https://media.tenor.com/5aAZH40lwxgAAAAm/slowmo-cat-twerk.webp",
@@ -211,6 +213,7 @@ if current_time - st.session_state.last_popup_time >= 60:
                         @keyframes run {{ 0% {{ left: -150px; }} 100% {{ left: 100%; }} }}
                     </style>""", unsafe_allow_html=True)
     st.session_state.last_popup_time = current_time
+
 
 # --- Flashcard Logic ---
 if not st.session_state.card_keys:
@@ -238,7 +241,7 @@ else:
                 if st.button("Перевернуть на ответ ↩️", use_container_width=True):
                     st.session_state.is_flipped = True
                     st.session_state.audio_to_play = None
-                    st.session_state.show_thai_translation = None # <-- NEW: Hide translation on flip
+                    st.session_state.show_thai_translation = None
                     st.rerun()
             with col2:
                 if st.button("▶️", use_container_width=True, help="Озвучить вопрос"):
@@ -257,7 +260,7 @@ else:
 
             if st.session_state.audio_to_play:
                 st.audio(st.session_state.audio_to_play)
-            
+
             if st.session_state.show_thai_translation == "question" and "question" in thai_translation:
                 with st.container(border=True):
                     st.subheader("🇹🇭 Перевод вопроса (Question Translation)")
